@@ -13,13 +13,15 @@
     * [Фреймоврки](#Frameworks)
     * [Базы данных](#DB)
     * [Вне веб-разработки](#OutsideWeb)
-* [Упраженения и теория детально](#examples)
+* [Упражнения и теория детально](#examples)
     * [Модули](#Modules)
     * [Как работает Node?](#HowItWorksInDetail)
     * [События](#NodeEvents)
     * [Работа с файлами](#workWithFiles)
     * [Создание консольных приложений](#consoleApp)
     * [Простой сайт на Node.js](#siteOnNode)
+    * [Сетевые запросы](#webRequests)
+    * [Express](#express)
 
 ## Теория Node.js <a name="NodeTheory"></a>
 
@@ -500,4 +502,308 @@ rl.close(); если же результат не совпал, выполняе
 чтобы сделать вывод информации цветным по смыслу.
 
 ### Простой сайт на Node.js <a name="siteOnNode"></a> 
+
+Веб-сервер на Node.js состоит из нескольких строчек кода:
+
+    var http = require('http');
+    http.createServer(function(req, res) {
+        console.log('HTTP server running');
+    }).listen(8080);
+    
+Что здесь происходит? Это легко понять. Сначала мы запрашиваем модуль 'http', затем создаем сервер http.createServer и
+запускаем его listen на порту 8080. Метод createServer объекта http принимает в качестве аргумента анонимную функцию
+обратного вызова, аргументами который, в свою очередь служат объекты req - request и res - response. Они соответсвуют
+поступавшему HTTP-запросу и отдаваемому HTTP-ответу. Если мы запустим в консоли наш скрипт server.js и потом в браузере
+обратимся по адресу http://localhost:8080/, то в консоли будет наше переданное сообщение
+
+Но в самом бразуере мы ничего пока не увидим. Остановим выполнение скритпа комбинацией Ctrl+C и допишем следующий код:
+
+    var http = require('http');
+    http.createServer(function(req, res) {
+        console.log('HTTP server running');
+        res.writeHead(200, {'Content-Type': 'text/html'});
+        res.end('<h1>Hello student!!!</h1>');
+    }).listen(8080);
+    
+Теперь мы сможем видеть наш результат на странице.
+
+Как мы видим, HTTP-запрос не ялвяется инциатором запуска всей программы. Создается Javascript-объект и ждем запросы,
+при поступлении которых срабатывает связанная с этим событием анонимная функция. В принципе неплохо, но мы уже работали с
+файлами и давайте заставим сервер отдавать нам страницу HTML.
+
+Создадим простую веб-страницу:
+
+    var http = require('http');
+    var fs = require('fs')
+    var PORT = 8087;
+    http.createServer(function(req, res) {
+        fs.readFile('index.html', 'utf8', function (err, data) {
+            if (err) {
+                res.writeHead(404, {
+                    'Content-Type': 'text/html'
+                });
+                res.end('Error load index.html');
+            } else {
+                res.writeHead(200, {
+                    'Content-Type': 'text/html'
+                });
+                res.end(data);
+            }
+        })
+    }).listen(PORT);
+    
+    console.log(`HTTP server running on port ${PORT}`);
+
+Но все это полумеры, мы не можем так подключить стили (только внутренние), скрипты и картинки.
+
+Создадим следующую простую структуру сайта:
+
+    --css
+        style.css
+    --img
+    --js
+        main.js
+    index.js
+    server.js
+    
+Файл index.html содержит такую
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/css/style.css">
+    <title>simple-site</title>
+    <style>
+        h1 {
+            color: blue;
+            transition: color 200ms ease-in;
+        }
+
+        h1:hover {
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <h1>kek</h1>
+    </div>
+    <footer class="page__bottom">
+        <div>
+            footer
+        </div>
+    </footer>
+    <script src="js/main.js"></script>
+</body>
+</html>
+```
+
+Если мы попробуем отобразить его предыдущим скриптом, он выведет только html-контент, без стилей, картинок и javascript-скриптов.
+Скрипт, который обработает все правильно, будет следующим:
+
+```javascript
+var http = require('http');
+var fs = require('fs');
+var url = require('url');
+var path = require('path');
+var typeMime = {
+    '.html': 'text/html',
+    '.htm': 'text/htm',
+    '.js': 'text/javascript',
+    '.css': 'text/css',
+    '.png': 'image/png',
+    '.jpg': 'image/png',
+};
+var PORT = 8087;
+
+http.createServer(function(req, res) {
+    var _url = url.parse(req.url),
+        filename = _url.pathname.substring(1),
+        extname,
+        type,
+        img;
+    
+    if (_url.pathname === '/') {
+        filename = 'index.html';
+    }
+    
+    extname = path.extname(filename);
+    type = typeMime[path.extname(filename)];
+    
+    if ((extname === '.png') || (extname === '.jpg')) {
+        img = fs.readFileSync(filename);
+        res.writeHead(200, {
+            'Content-Type': type
+        });
+        res.write(img, 'hex');
+        res.end();
+    } else {
+        fs.readFile(filename, 'utf8', function (err, content) {
+            if (err) {
+                res.writeHead(404, {
+                    'Content-Type': 'text/plain; charset=utf-8'
+                });
+                res.write(err.message);
+                res.end();
+            } else {
+                res.writeHead(200, {
+                    'Content-Type': type
+                });
+                res.write(content);
+                res.end();
+            }
+        })
+    }
+}).listen(PORT);
+
+console.log(`HTTP server running on port ${PORT}`);
+```
+
+Здесь мы видим объект с mime-типами, который позволит нам загружать разнообразный контент:
+
+        var typeMime = {
+            '.html': 'text/html',
+            '.htm': 'text/htm',
+            '.js': 'text/javascript',
+            '.css': 'text/css',
+            '.png': 'image/png',
+            '.jpg': 'image/png',
+        };
+        
+У нас есть новые модули, один из них path = require('path'), который отвечает за различные операции с путями файлов. Так
+как в GET-запросах параметры передаются через url, для их обработки вы должны проанализировать эту строку. Удобно сделать
+это с помощью стандартного модуля url и его функции parse _url = url.parse(req.url).
+
+Находим имя файла, которому произошел HTTP-запрос:
+
+    filename = _url.pathname.substring(1),
+    
+Если это обращение к корню сайта, то вызывать будем index.html
+
+    if (url.pathname === '/') {
+        filename = 'index.html';
+    }
+    
+Далее находим расширение файла, на который поступил запрос, и выбираем тут же ему mime-тип в переменную type
+
+    extname = path.extname(filename);
+    type = typeMime[path.extname(filename)];
+    
+Первым делом проверяем, не пришел ли запрос на картинку. Поскольку это двоичные файлы, то мы в метод write вторым параметром
+передаем кодировку 'hex'
+
+    if ((extname === '.png') || (extname === '.jpg')) {
+            img = fs.readFileSync(filename);
+            res.writeHead(200, {
+                'Content-Type': type
+            });
+            res.write(img, 'hex');
+            res.end();
+    }
+
+Обратите внимание, что мы здесь проверяем только графические файлсы с расширениями png и jpg.
+
+А дальше идет, как и раньше подгрузка файлов, но с учетом mima-типа файла. Если все сделали верно, мы должны увидеть наш
+полноценный сайт со всеми стилями и картинками.
+
+### Сетевые запросы <a name="webRequests"></a>
+
+Стандартный модуль http содержит функцию get для отправки GET запросов и функцию request для отправки POST и прочих
+запросов.
+
+Пример отправки GET запроса:
+
+```javascript
+var http = require('http');
+http.get("http://loftschool.com/", function(res) {
+  console.log("Статус ответа: " + res.statusCode);
+}).on('error', function(e) {
+    console.log("Статус ошибка " + e.message);
+});
+```
+
+Пример отправки POST запроса:
+
+```javascript
+var http = require('http');
+var options = {
+    hostname: 'loftschool.com',
+    port: 80,
+    path: '/',
+    method: 'POST'
+};
+
+var req = http.request(options, function (res) {
+    console.log('STATUS: ' + res.statusCode);
+    console.log('HEADERS: ' + JSON.stringify(res.headers));
+    res.setEncoding('utf8');
+    res.on('data', function(chunk) {
+      console.log('BODY: ' + chunk);
+    })
+})
+req.on('error', function(e) {
+  console.log('Возникла проблема с ответом от сервера: ' + e.message);
+});
+req.write('data\n');
+req.end();
+```
+
+В основном используют популярный и удобный npm-модуль для работы с исходящими сетевыми запросами - request.
+
+Пример отправки GET-запроса:
+
+```javascript
+var request = require('request');
+request('http://loftschool.com/', function (err, res, body) {
+    if (!err && res.statusCode == 200) {
+        console.log(body);
+    }
+})
+```
+
+Мы напечатаем в консоль заглавную страницу школы loftschool.
+
+Пример отправки POST запроса:
+
+```javascript
+var request = require('request');
+request({
+    method: 'POST',
+    uri: 'http://loftschool.com/',
+    form: {
+        key: 'value'
+    },
+}, function(err, res, body) {
+  if (err) {
+      console.error(err);
+  } else {
+      console.log(body);
+      console.log(res.statusCode);
+  }
+})
+```
+
+Этот модуль полезен тем, что позволяет автоматически обрабатывать JSON, работать с учетом редиректов или без них, поддерживает
+BasicAuth и OAuth, проксиз и, наконец, поддерживает cookies.
+
+### Express <a name="express"></a>
+
+Express - это минималистичный и гибкий веб-фреймворк для приложений Node.js, предоставляющий обширный набор функций для
+мобильных и веб-приложений.
+
+Имея в своем распоряжении множество служебных методов HTTP и промежуточных обработчиков, создать надежный API можно
+быстро и легко.
+
+Express предоставляет тонкий слой фундаментальных функций веб-приложений, которые не мешают вам работать с давно знакомыми
+и любимыми вами функциями Node.js.
+
+**Установка**. Создайте каталог для своего приложения и сделайте его своим рабочим каталогом.
+
+
+
+
 

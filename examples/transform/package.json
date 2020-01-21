@@ -1,0 +1,16 @@
+{
+  "name": "transofrm",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: not test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "",
+  "dependencies": {
+    "from2-array": "0.0.4",
+    "through2": "^2.0.3"
+  }
+}

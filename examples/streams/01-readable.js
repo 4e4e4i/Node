@@ -1,4 +1,3 @@
-
 process
     .stdin
     // вешаем на консоль событие readable

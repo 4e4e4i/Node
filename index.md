@@ -1134,3 +1134,4 @@ console.log(path.parse('/home/user/dir/file.txt'));
 console.log(path.join('/foo', 'bar', 'baz/asdf', 'quux', '..')); // соединяет пути
 console.log(path.sep);  // если надо вставить разделить в путях, то используем его.
 ```
+

@@ -28,6 +28,7 @@
     * [Import](#import)
     * [Console-process](#consoleProcess)
     * [Module path](#modulePath)
+* [Асинхронность в Node.js](#asyncNode)
 
 ## Теория Node.js <a name="NodeTheory"></a>
 
@@ -1135,3 +1136,5 @@ console.log(path.join('/foo', 'bar', 'baz/asdf', 'quux', '..')); // соедин
 console.log(path.sep);  // если надо вставить разделить в путях, то используем его.
 ```
 
+## Асинхронность в Node.js <a name="asyncNode"></a>
+![](./pics/eventLoopNodejs.png)
